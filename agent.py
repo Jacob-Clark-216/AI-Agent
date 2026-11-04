@@ -1,5 +1,4 @@
 import ollama
-import json
 import pathlib as pl
 import time as t
 
@@ -8,30 +7,48 @@ import time as t
 
 workspace_folder = pl.Path(__file__).parent / "Workspace"
 
+#  ---------------------Read and edit files in workspace ---------------------
+
 def list_files() -> str:
     # List files in the workspace folder or empty if none present
     return "\n".join(f.name for f in workspace_folder.iterdir()) or "(empty)"
 
-def read_file(file_name:str) -> str:
+def read_file(filename:str) -> str:
     # Read contents of file in workspace folder
-    path = workspace_folder / file_name
+    path = workspace_folder / filename
     if not path.is_file():
         return "Error: No such file exists within the workspace"
     else:
         return path.read_text(encoding="utf-8")
 
-def write_file(file_name:str, content:str) -> str:
+def write_file(filename:str, content:str) -> str:
     # Create new file or overwrite existing file
-    path = workspace_folder / file_name
+    path = workspace_folder / filename
     path.write_text(content, encoding="utf-8")
-    return f"File {file_name} correctly written"
+    return f"File {filename} correctly written"
+
+def delete_file(filename: str) -> str:
+    # Delete a file in the workspace
+    path = workspace_folder / filename
+    if path.exists:
+        decision = ""
+        while decision.upper() not in ["Y", "N"]:
+            decision = input(f"Agent wants to delete {filename}. Are you happy with this decision? (Y/N)")
+        if decision.upper() == "Y":
+            path.unlink()
+            return f"File {filename} has been successfully deleted"
+        else:
+            return f"User has not given permission to delete {filename}"
+            
+
+#  -------------------------Time and date retrieval -------------------------
 
 def get_current_time() -> str:
     # Get current time
     return f"{t.ctime()}"
 
 
-tools = {"list_files": list_files, "read_file": read_file, "write_file": write_file, "get_current_time": get_current_time}
+tools = {"list_files": list_files, "read_file": read_file, "write_file": write_file, "get_current_time": get_current_time, "delete_file": delete_file}
 
 tool_schema = [
     {
@@ -63,6 +80,17 @@ tool_schema = [
                         "properties": {"filename": {"type": "string"}, "content": {"type": "string"}},
                         "required": ["filename"]}
         }
+    },
+    {
+        "type": "function",
+                "function": {
+                    "name": "delete_file",
+                    "description": "Make a request to delete a file in the workspace. The user must review the request and approve or deny requests before deletion",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"filename": {"type": "string"}},
+                        "required": ["filename"]}
+                }
     },
     {
         "type": "function",
@@ -103,7 +131,7 @@ def run_agent() -> str:
             messages.append(response.message)
             for call in response.message.tool_calls:
                 if call.function.name in tools:
-                    args = json.loads(call.function.arguments or "{}")
+                    args = call.function.arguments or {}
                     result = tools[call.function.name](**args)
                     print(f"  [TOOL] {call.function.name}({args}) - {result}")
                     messages.append({"role": "tool", "content": result})
