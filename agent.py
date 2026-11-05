@@ -39,16 +39,32 @@ def delete_file(filename: str) -> str:
             return f"File {filename} has been successfully deleted"
         else:
             return f"User has not given permission to delete {filename}"
-            
 
-#  -------------------------Time and date retrieval -------------------------
+# ----------------------------- Persistant Memory-----------------------------
+
+memory = pl.Path("memory.md")
+
+def load_memory() -> str:
+    # Read the contents of the persistant memory file
+    return memory.read_text(encoding="utf-8")
+
+def store_memory(note:str) -> str:
+    # Append note to memory file
+    content = memory.read_text(encoding="utf-8")
+    time_called = f"{t.ctime()} - "
+    addition = "\n\n" + time_called + note
+    content += addition
+    memory.write_text(content, encoding="utf-8")
+    return f"New note '{note}' added successfully to the memory file"
+
+# -------------------------- Time and date retrieval --------------------------
 
 def get_current_time() -> str:
     # Get current time
     return f"{t.ctime()}"
 
 
-tools = {"list_files": list_files, "read_file": read_file, "write_file": write_file, "get_current_time": get_current_time, "delete_file": delete_file}
+tools = {"list_files": list_files, "read_file": read_file, "write_file": write_file, "delete_file": delete_file, "load_memory": load_memory, "store_memory": store_memory, "get_current_time": get_current_time}
 
 tool_schema = [
     {
@@ -95,6 +111,25 @@ tool_schema = [
     {
         "type": "function",
                 "function": {
+                    "name": "load_memory",
+                    "description": "Retrieve content of the persistant memory file",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+    },
+        {
+        "type": "function",
+                "function": {
+                    "name": "store_memory",
+                    "description": "Save a note to the persistant memory file with a timestamp of when it was stored",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"note": {"type": "string"}},
+                        "required": ["note"]}
+                }
+    },
+    {
+        "type": "function",
+                "function": {
                     "name": "get_current_time",
                     "description": "Get current day, date, and time in the format [weekday] [month] [day] [hrs:mins:secs] [year]",
                     "parameters": {"type": "object", "properties": {}}
@@ -105,7 +140,7 @@ tool_schema = [
 # ----------------------------------------------------- LLM -----------------------------------------------------
 
 model = "gemma4:e2b"
-messages = [{"role": "system", "content": "You are a friendly, helpful personal assistant."}]
+messages = [{"role": "system", "content": "You are a friendly, helpful personal assistant. You must use the load_memory tool at the start of any conversation before responding to any user queries to retrieve historical information"}]
 
 def chat() -> str:
     response = ollama.chat(
