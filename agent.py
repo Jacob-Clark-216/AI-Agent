@@ -181,4 +181,6 @@ if __name__ == "__main__":
         
         messages.append({"role": "user", "content": next_message})
 
+        print("\n\n")
         print(run_agent())
+        print("\n" + "-"*80)
