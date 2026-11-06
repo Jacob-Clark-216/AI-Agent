@@ -172,15 +172,19 @@ def run_agent() -> str:
                     messages.append({"role": "tool", "content": result})
     
 if __name__ == "__main__":
-    print("Agent Running - ctrl+c to quit")
+    print(r"Agent Running - \q to quit")
 
     while True:
         next_message = input("> ")
         if next_message == r"\q":
             break
-        
-        messages.append({"role": "user", "content": next_message})
 
-        print("\n\n")
-        print(run_agent())
-        print("\n" + "-"*80)
+        try:        
+            messages.append({"role": "user", "content": next_message})
+
+            print("\n\n")
+            print(run_agent())
+            print("\n" + "-"*80)
+        except ConnectionError:
+            print("Error: Ollama is not accessible.")
+            raise SystemExit
