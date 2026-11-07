@@ -168,7 +168,7 @@ def run_agent() -> str:
                 if call.function.name in tools:
                     args = call.function.arguments or {}
                     result = tools[call.function.name](**args)
-                    print(f"  [TOOL] {call.function.name}({args}) - {result}")
+                    print(f"  [TOOL] {call.function.name}({args}) - {result[:25]}")
                     messages.append({"role": "tool", "content": result})
     
 if __name__ == "__main__":
