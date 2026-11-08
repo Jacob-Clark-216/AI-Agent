@@ -140,7 +140,11 @@ tool_schema = [
 # ----------------------------------------------------- LLM -----------------------------------------------------
 
 model = "gemma4:e2b"
-messages = [{"role": "system", "content": "You are a friendly, helpful personal assistant. You must use the load_memory tool at the start of any conversation before responding to any user queries to retrieve historical information"}]
+messages = [{
+    "role": "system",
+    "content":
+    "You are a friendly, helpful personal assistant. You must use the load_memory tool at the start of any conversation before responding to any user queries to retrieve historical information. You must use british english and spelling unless otherwise required by the task given. You should use the store_memory tool to record any pertinent information about the user that is not already in persistant storage."
+    }]
 
 def chat() -> str:
     response = ollama.chat(
@@ -173,10 +177,16 @@ def run_agent() -> str:
     
 if __name__ == "__main__":
     print(r"Agent Running - \q to quit")
+    # TODO: Implement memory storage prompt when chat is closed
 
     while True:
         next_message = input("> ")
         if next_message == r"\q":
+            messages.append({
+                "role": "user",
+                "content": "I am closing the session. Please summarise the events of this session and store them in persistant memory for future reference."
+            })
+            run_agent()
             break
 
         try:        
