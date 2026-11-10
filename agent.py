@@ -184,7 +184,16 @@ if __name__ == "__main__":
         if next_message == r"\q":
             messages.append({
                 "role": "user",
-                "content": "I am closing the session. Please summarise the events of this session and store them in persistant memory for future reference."
+                "content": """
+I am closing this session. Please generate a structured summary of our session. Please organise the summary using the following categories:
+1. **[Topic/Goal]**
+2. **[Key Decisions Made]**
+3. **[Key Learnings/Takeaways]**
+4. **[Action Items for Next Session]**
+5. **[Resource Log]** (This section must list all files **created**, **updated**, or **deleted** during this session, noting the file name and the change made.)
+
+Store this summary in persistent memory.
+"""
             })
             run_agent()
             break
