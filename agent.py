@@ -1,4 +1,4 @@
-import ollama
+import ollama, requests, bs4, random, json
 import pathlib as pl
 import time as t
 
@@ -66,8 +66,69 @@ def get_current_time() -> str:
     # Get current time
     return f"{t.ctime()}"
 
+config_file = pl.Path("config.json")
+with open(config_file, "r") as config:
+    settings = json.load(config)
+    profiles = settings["web_fetcher"]["user_agent_profiles"]
 
-tools = {"list_files": list_files, "read_file": read_file, "write_file": write_file, "delete_file": delete_file, "load_memory": load_memory, "store_memory": store_memory, "get_current_time": get_current_time}
+def fetch_web_content(url: str, retries: int = settings["web_fetcher"]["max_retries"], timeout: int = settings["web_fetcher"]["timeout_seconds"]) -> dict:
+    # Make a get request to the target url
+    decision = ""
+    while decision.upper() not in ["Y", "N"]:
+        decision = input(f"Agent wants to access {url} from the internet. Are you happy with this decision? (Y/N)")
+    if decision.upper() == "Y":
+        # Randomly select browser profile and format appropriate headers
+        profile = random.choice(list(profiles.values()))
+        headers = {
+            "Upgrade-Insecure-Requests": "1",
+            "User-Agent": profile["User-Agent"],
+            "Accept": profile["Accept"],
+            "Accept-Language": "en,en-US;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br"
+        }
+        for r in range(retries):
+            # Send get request to url using given timeout
+            response = requests.get(url, headers=headers, timeout=timeout)
+            # Check status code of response
+            if response.status_code == 200:
+                print("Successfully retrieved content (Status 200).")
+                response = response.text
+                soup = bs4.BeautifulSoup(response, "html.parser")
+                # Remove potential XSS and malicious prompt injection
+                for element in soup(["script", "style", "header", "footer", "nav", "iframe", "noscript"]):
+                    element.decompose()
+                data = {"status code": 200}
+                data["title"] = soup.title.text
+                description = soup.find("meta", attrs = {"name": "description"})
+                if description != None:
+                    data["description"] = description.get("content")
+                data["links"] = []
+                for link in soup.find_all("a"):
+                    data["links"].append(link.get("href"))
+                data["content"] =  "\n".join(line.strip() for line in soup.get_text(separator="\n").splitlines() if line.strip())
+                return data
+            elif response.status_code != 429:
+                print(f"Error {response.status_code}: {response.text}")
+                return {"status code": response.status_code, "Error": ""}
+            else:
+                wait = settings["web_fetcher"]["rate_limit_wait_base"]**r
+                print(f"Rate limited. Waiting for {wait} seconds before retrying")
+                t.sleep(wait)
+        return {"status code": response.status_code, "Error": "Rate Limited. Failed to retrieve content after retries."}
+    else:
+        return {"Error": f"The user has rejected the request to access {url}"}
+
+
+tools = {
+    "list_files": list_files,
+    "read_file": read_file,
+    "write_file": write_file,
+    "delete_file": delete_file,
+    "load_memory": load_memory,
+    "store_memory": store_memory,
+    "get_current_time": get_current_time,
+    "fetch_web_content": fetch_web_content
+    }
 
 tool_schema = [
     {
@@ -137,6 +198,22 @@ tool_schema = [
                     "description": "Get current day, date, and time in the format [weekday] [month] [day] [hrs:mins:secs] [year]",
                     "parameters": {"type": "object", "properties": {}}
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_web_content",
+            "description": "Make a request to get title, description, links, and content of a webpage. Exponential back-off and timeouts are included in the tool.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string"},
+                    "retries": {"type": "integer"},
+                    "timeout": {"type": "integer"}
+                    },
+                "required": ["url"]
+                }
+        }
     }
 ]
 
@@ -180,7 +257,9 @@ def run_agent() -> str:
                 if call.function.name in tools:
                     args = call.function.arguments or {}
                     result = tools[call.function.name](**args)
-                    print(f"  [TOOL] {call.function.name}({args}) - {result[:25]}")
+                    if type(result) == dict:
+                        result = json.dumps(result)
+                    print(f"  [TOOL] {call.function.name}({args})")
                     messages.append({"role": "tool", "content": result})
     
 if __name__ == "__main__":
