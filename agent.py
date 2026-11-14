@@ -2,6 +2,10 @@ import ollama, requests, bs4, random, json
 import pathlib as pl
 import time as t
 
+# Load settings from config file
+config_file = pl.Path("config.json")
+with open(config_file, "r") as config:
+    settings = json.load(config)
 
 # ---------------------------------------------------- Tools ----------------------------------------------------
 
@@ -31,7 +35,10 @@ def delete_file(filename: str) -> str:
     # Delete a file in the workspace
     path = workspace_folder / filename
     if path.exists:
-        decision = ""
+        if settings["file_deletion"]["user_permission_required"] == True:
+            decision = ""
+        else:
+            decision = "Y"
         while decision.upper() not in ["Y", "N"]:
             decision = input(f"Agent wants to delete {filename}. Are you happy with this decision? (Y/N)")
         if decision.upper() == "Y":
@@ -66,18 +73,18 @@ def get_current_time() -> str:
     # Get current time
     return f"{t.ctime()}"
 
-config_file = pl.Path("config.json")
-with open(config_file, "r") as config:
-    settings = json.load(config)
-    profiles = settings["web_fetcher"]["user_agent_profiles"]
 
 def fetch_web_content(url: str, retries: int = settings["web_fetcher"]["max_retries"], timeout: int = settings["web_fetcher"]["timeout_seconds"]) -> dict:
     # Make a get request to the target url
-    decision = ""
+    if settings["web_fetcher"]["user_permission_required"] == True:
+        decision = ""
+    else:
+        decision = "Y"
     while decision.upper() not in ["Y", "N"]:
         decision = input(f"Agent wants to access {url} from the internet. Are you happy with this decision? (Y/N)")
     if decision.upper() == "Y":
         # Randomly select browser profile and format appropriate headers
+        profiles = settings["web_fetcher"]["user_agent_profiles"]
         profile = random.choice(list(profiles.values()))
         headers = {
             "Upgrade-Insecure-Requests": "1",

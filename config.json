@@ -1,4 +1,7 @@
 {
+    "file_deletion": {
+        "user_permission_required": true
+    },
     "web_fetcher": {
         "max_retries": 5,
         "timeout_seconds": 10,
@@ -24,6 +27,7 @@
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
             }
         },
-        "rate_limit_wait_base": 2
+        "rate_limit_wait_base": 2,
+        "user_permission_required": true
     }
 }
