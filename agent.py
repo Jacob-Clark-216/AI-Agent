@@ -3,7 +3,7 @@ import pathlib as pl
 import time as t
 
 # Load settings from config file
-config_file = pl.Path("config.json")
+config_file = pl.Path(__file__).parent / "config.json"
 with open(config_file, "r") as config:
     settings = json.load(config)
 
@@ -271,7 +271,6 @@ def run_agent() -> str:
     
 if __name__ == "__main__":
     print(r"Agent Running - \q to quit")
-    # TODO: Implement memory storage prompt when chat is closed
 
     while True:
         next_message = input("> ")
