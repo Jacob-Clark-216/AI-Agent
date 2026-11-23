@@ -52,7 +52,7 @@ def delete_file(filename: str) -> str:
 
 # ----------------------------- Persistant Memory-----------------------------
 
-memory = pl.Path(__path__).parent / "memory.md"
+memory = pl.Path(__file__).parent / "memory.md"
 
 def load_memory() -> str:
     # Read the contents of the persistant memory file
